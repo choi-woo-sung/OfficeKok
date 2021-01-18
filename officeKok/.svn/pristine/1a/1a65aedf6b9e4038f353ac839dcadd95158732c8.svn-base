@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.drive.dao.IPersonalDriveDAO">
+
+	<select id="selectForder" resultType="PersonalDriveVO" parameterType="PersonalDriveVO">
+	SELECT EMPFOLNM, EMPFOLROUTE,
+			 DECODE(EMPFOLROUTE, '/', EMPFOLROUTE || EMPFOLNM, EMPFOLROUTE || '/' || EMPFOLNM) AS ID, 
+    		TO_CHAR(CREATEDATE, 'YYYY-MM-DD HH24:mm:ss') AS DATEINFO, 'folder' AS TYPE 
+	FROM EMPFOL
+	WHERE EMPNO = #{empno} AND EMPFOLROUTE = #{empfolroute}
+	ORDER BY EMPFOLNM ASC
+	</select>
+	
+	<select id="selectAllForderList" resultType="PersonalDriveVO" parameterType="int">
+	SELECT A.EMPFOLNM, A.EMPFOLROUTE, A.ID, A.DATEINFO, A.TYPE, B.EMPFOLNM AS DATA_EMPFOLNM, B.EMPFOLROUTE AS DATA_EMPFOLROUTE, B.ID AS DATA_ID,
+        B.DATEINFO AS DATA_DATEINFO, B.TYPE AS DATA_TYPE
+	FROM
+	(SELECT EMPFOLNM, EMPFOLROUTE, DECODE(EMPFOLROUTE, '/', EMPFOLROUTE || EMPFOLNM, EMPFOLROUTE || '/' || EMPFOLNM) AS ID, 
+	    TO_CHAR(CREATEDATE, 'YYYY-MM-DD') AS DATEINFO, 'folder' AS TYPE 
+	FROM EMPFOL
+	WHERE EMPNO = #{empno})A LEFT OUTER JOIN
+	(SELECT EMPFOLNM, EMPFOLROUTE, DECODE(EMPFOLROUTE, '/', EMPFOLROUTE || EMPFOLNM, EMPFOLROUTE || '/' || EMPFOLNM) AS ID, 
+	    TO_CHAR(CREATEDATE, 'YYYY-MM-DD') AS DATEINFO, 'folder' AS TYPE 
+	FROM EMPFOL WHERE EMPNO = #{empno})B
+	ON B.EMPFOLROUTE = A.ID
+	</select>
+	
+	<insert id="insertFolder" parameterType="PersonalDriveVO">
+		INSERT INTO EMPFOL (
+	    DRIVENO,
+	    EMPNO,
+	    EMPFOLNM,
+	    EMPFOLROUTE,
+	    CREATEDATE
+	) VALUES (
+	    (SELECT NVL(MAX(DRIVENO + 1),0) FROM EMPFOL),
+	    #{empno},
+	    #{empfolnm},
+	    #{empfolroute},
+	    SYSDATE
+	)
+	</insert>
+	
+	<select id="selectInsertFolder" parameterType="PersonalDriveVO" resultType="PersonalDriveVO">
+		SELECT EMPFOLNM, EMPFOLROUTE,
+				 DECODE(EMPFOLROUTE, '/', EMPFOLROUTE || EMPFOLNM, EMPFOLROUTE || '/' || EMPFOLNM) AS ID, 
+	    		TO_CHAR(CREATEDATE, 'YYYY-MM-DD') AS DATEINFO, 'folder' AS TYPE 
+		FROM EMPFOL
+		WHERE EMPNO = #{empno} AND EMPFOLROUTE = #{empfolroute} AND EMPFOLNM = #{empfolnm} 
+	</select>
+	
+	<insert id="insertFile" parameterType="PersonalDriveVO">
+		INSERT INTO empfile (
+		    EMPFILENO,
+		    DRIVENO,
+		    EMPFILEMIME,
+		    EMPFILENM,
+		    FILEROUTE,
+		    EMPFILESIZE,
+		    DELCHK,
+		    CREATEDATE
+		) VALUES (
+		    (SELECT NVL(MAX(EMPFILENO + 1),0) FROM EMPFILE),
+		    (SELECT DRIVENO FROM EMPFOL WHERE EMPFOLROUTE = #{empfolroute}),
+		    #{empfilemime},
+		    #{empfilenm},
+		    #{fileroute},
+		    #{empfilesize},
+		    'N',
+		    SYSDATE
+		)
+	</insert>
+	
+	<select id="selectInsertFile" parameterType="PersonalDriveVO" resultType="PersonalDriveVO">
+		SELECT  FILEROUTE || EMPFILENM AS ID, EMPFILESIZE, 
+				EMPFILEMIME, EMPFILENM, 
+				TO_CHAR(CREATEDATE, 'YYYY-MM-DD HH24:mm:ss') AS DATEINFO   
+		FROM EMPFILE
+		WHERE FILEROUTE =  #{fileroute} AND EMPFILENM = #{empfilenm} 
+	</select>
+	
+	<select id="selectFileList" parameterType="PersonalDriveVO" resultType="PersonalDriveVO">
+		SELECT EMPFILEMIME, EMPFILENM, FILEROUTE, CREATEDATE, EMPFILESIZE,
+        		DECODE(FILEROUTE, '/', FILEROUTE || EMPFILENM, FILEROUTE || '/' || EMPFILENM) AS ID
+		FROM EMPFILE
+		WHERE FILEROUTE =  #{fileroute}
+	</select>
+
+</mapper>

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.approval.doc.dao.IApprovalReferenceDAO">
+
+	<insert id="insertApprReference" parameterType="java.util.List">
+		INSERT ALL
+		<foreach collection="list" item="docref">
+			INTO docref (empno, refdocno, readchk) 
+			VALUES (#{docref.empno, jdbcType=NUMERIC}, #{docref.refdocno, jdbcType=VARCHAR}, 'N')
+		</foreach>
+		SELECT * FROM DUAL	
+	</insert>
+	
+	<sql id="searchFlag">
+		<trim prefix="AND (" prefixOverrides="OR" suffix=")">
+			<if test="searchDetail.apprdoc neq null">
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchDetail.apprdoc.empnm)">
+					INSTR(empnm, #{searchDetail.apprdoc.empnm, jdbcType=VARCHAR}) > 0
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchDetail.apprdoc.docformnm)">
+					INSTR(docformnm, #{searchDetail.apprdoc.docformnm, jdbcType=VARCHAR}) > 0
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchDetail.apprdoc.apprdocsubject)">
+					INSTR(apprdocsubject, #{searchDetail.apprdoc.apprdocsubject, jdbcType=VARCHAR}) > 0
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchDetail.apprdoc.start) 
+						and @org.apache.commons.lang3.StringUtils@isNotBlank(searchDetail.apprdoc.end)">
+					<![CDATA[
+						apprdocdate >= TO_DATE(#{searchDetail.apprdoc.start, jdbcType=DATE}, 'YYYY-MM-DD')
+						AND apprdocdate <= TO_DATE(#{searchDetail.apprdoc.end, jdbcType=DATE}, 'YYYY-MM-DD')
+					]]>
+				</if>
+			</if>
+		</trim>
+	</sql>
+
+	<sql id="referenceList">
+		SELECT A.*, C.*, apprhisdate, empnm, deptnm, docformnm
+		FROM docref A INNER JOIN
+		 (
+		    SELECT apprdocno, MAX(D.apprstepprior) apprstepprior
+			        FROM apprdoc A INNER JOIN apprline C ON A.apprlineno = C.apprlineno 
+			                       INNER JOIN apprstep D ON C.apprlineno = D.apprlineno 
+			            GROUP BY apprdocno
+		) B ON A.refdocno = B.apprdocno
+		    INNER JOIN apprdoc C ON A.refdocno = C.apprdocno
+		    LEFT OUTER JOIN apprstep D ON (C.apprlineno = D.apprlineno AND B.apprstepprior = D.apprstepprior)
+		    LEFT OUTER JOIN apprhis E ON (D.apprstepno = E.apprstepno AND A.refdocno = E.apprdocno)
+		    INNER JOIN docform F ON C.docformno = F.docformno
+				    INNER JOIN emp G ON C.draftno = G.empno
+				    INNER JOIN dept H ON G.deptno = H.deptno
+			WHERE A.empno = #{empno, jdbcType=NUMERIC}
+			AND C.apprdocstate NOT IN(1, 5)
+	</sql>
+
+	<select id="selectDocRefList" parameterType="string" resultType="DocRefVO">
+		SELECT A.*, deptnm, empnm
+		FROM docref A INNER JOIN apprdoc B ON A.refdocno = B.apprdocno
+            INNER JOIN emp C ON A.empno = C.empno
+            INNER JOIN dept D ON C.deptno = D.deptno
+            WHERE A.refdocno = #{apprdocno, jdbcType=VARCHAR}
+	</select>
+	
+	<resultMap type="DocRefVO" id="reference" autoMapping="true">
+		<association property="apprdoc" javaType="ApprovalDocVO" autoMapping="true"></association>
+	</resultMap>
+	
+	<select id="selectReferenceCnt" parameterType="PagingVO" resultType="int">
+		SELECT COUNT(*)
+		FROM 
+			(
+				<include refid="referenceList" />
+				<include refid="searchFlag" />
+			)
+	</select>
+	
+	<select id="selectReferenceList" parameterType="PagingVO" resultMap="reference">
+		SELECT A.*			
+		FROM
+		(
+			SELECT ROWNUM rn, empno, refdocno, readchk, apprdocno, docformno, apprlineno, draftno,
+					apprdocsubject, apprdoccontent, apprdocstate, TO_CHAR(apprdocdate, 'YYYY-MM-DD') AS apprdocdate,
+					TO_CHAR(apprhisdate, 'YYYY-MM-DD') AS apprhisdate, empnm, deptnm, docformnm
+			FROM
+			(
+				<include refid="referenceList" />
+				<include refid="searchFlag" />
+				ORDER BY apprhisdate DESC
+			) A
+		) A WHERE rn BETWEEN #{startRow, jdbcType=NUMERIC} AND #{endRow, jdbcType=NUMERIC}
+	</select>
+	
+</mapper>

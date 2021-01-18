@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.approval.draft.dao.IDocFormDAO">
+	
+	<sql id="searchFrag">
+		<where>
+			<if test="searchVO neq null and @org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+				<if test="'doctype' eq searchVO.searchType">
+					INSTR(doctype, #{searchVO.searchWord, jdbcType=VARCHAR}) > 0
+				</if>
+				<if test="'docformnm' eq searchVO.searchType">
+					INSTR(docformnm, #{searchVO.searchWord, jdbcType=VARCHAR}) > 0
+				</if>
+				<if test="'all' eq searchVO.searchType">
+					INSTR(doctype, #{searchVO.searchWord, jdbcType=VARCHAR}) > 0
+					OR
+					INSTR(docformnm, #{searchVO.searchWord, jdbcType=VARCHAR}) > 0
+				</if>
+			</if>
+		</where>
+	</sql>
+	
+	
+	<select id="selectDocFormCnt" parameterType="PagingVO" resultType="int">
+		SELECT COUNT(*) 
+		FROM docform
+		<include refid="searchFrag" />
+	</select>
+	
+	<select id="selectDockForm" parameterType="String" resultType="DocFormVO">
+		SELECT *
+		FROM docform
+		WHERE docformno = #{docformno, jdbcType=VARCHAR}
+	</select>
+	
+	<select id="selectDocFormList" parameterType="PagingVO" resultType="DocFormVO">
+		SELECT A.*
+		FROM 
+		(
+		    SELECT ROWNUM rn, A.* 
+		    FROM 
+		    (
+		        SELECT * 
+		        FROM docform
+		        <include refid="searchFrag" />
+		        ORDER BY docformno
+		    ) A ) A
+		WHERE rn BETWEEN #{startRow, jdbcType=NUMERIC} AND #{endRow, jdbcType=NUMERIC}
+	</select>
+	
+</mapper>

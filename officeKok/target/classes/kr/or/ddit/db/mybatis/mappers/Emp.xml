@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.manager.emp.daoIEmpDAO">
+
+<sql id="searchFrag">
+	<where>
+		<if test="searchVO neq null and @org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+			<if test="'name' eq searchVO.searchType">
+				empnm LIKE '%'||#{searchVO.searchWord}||'%'
+			</if>
+			<if test="'dept' eq searchVO.searchType">
+				deptnm LIKE '%'||#{searchVO.searchWord}||'%'
+			</if>
+			<if test="'rank' eq searchVO.searchType">
+				ranknm LIKE '%'||#{searchVO.searchWord}||'%'
+			</if>
+			<if test="'all' eq searchVO.searchType">
+				INSTR(EMPNM, #{searchVO.searchWord}) > 0
+				OR
+				INSTR(DEPTNM, #{searchVO.searchWord}) > 0
+				OR
+				INSTR(RANKNM, #{searchVO.searchWord}) > 0
+			</if>
+		</if>
+	</where>
+</sql>
+<select id="selectEmpCount" parameterType="PagingVO" resultType="int">
+	SELECT COUNT(*)
+	FROM (
+	SELECT empno, empnm, ranknm, deptnm, empmail,
+				emphp, TO_CHAR(enterdate, 'YYYY-MM-DD') enterdate
+				FROM(
+					SELECT empno, empnm, rankno, deptnm, empmail, emphp, enterdate
+					FROM(
+						SELECT deptno, sys_connect_by_path(deptnm, ' ') deptnm
+						FROM dept
+						START WITH redeptno IS NULL
+						CONNECT BY PRIOR deptno = redeptno
+					) join emp USING(deptno)
+				) join rank USING(rankno)
+	)
+	<include refid="searchFrag" />
+</select>
+
+<select id="selectEmpList" parameterType="PagingVO" resultType="EmpVO">
+	SELECT *
+	FROM(
+		SELECT  ROWNUM rn,  A.*
+		FROM(
+			SELECT empno, empnm, ranknm, deptnm, empmail,
+			emphp, TO_CHAR(enterdate, 'YYYY-MM-DD') enterdate
+			FROM(
+				SELECT empno, empnm, rankno, deptnm, empmail, emphp, enterdate
+				FROM(
+					SELECT deptno, sys_connect_by_path(deptnm, ' ') deptnm
+					FROM dept
+					START WITH redeptno IS NULL
+					CONNECT BY PRIOR deptno = redeptno
+				) join emp USING(deptno)
+			) join rank USING(rankno)
+            <include refid="searchFrag" />
+            ORDER BY empno
+		) A
+	)
+	<![CDATA[
+    	WHERE rn >= #{startRow} AND rn <= #{endRow}
+    ]]>
+</select>
+
+<sql id="selectEmp">
+	SELECT  empnm, empno, mgrno, deptnm, ranknm, deptno,
+	        empmail, emppw, empregno, emphp, empzip, 
+	        empadd1 || empadd2 empadd, empgen, TO_CHAR(enterdate, 'YYYY-MM-DD') enterdate, 
+	        TO_CHAR(leavedate, 'YYYY-MM-DD') leavedate, empdel, substr(emppw,1,(instr(emppw,'{')-1)) as emppw2 
+	        , empadd1, empadd2 ,proimgfile
+	FROM(
+	    SELECT empno, mgrno, empnm, rankno, deptnm, deptno, 
+	           empmail, emppw, empregno, emphp, empzip, 
+	           empadd1, empadd2, empgen, enterdate, leavedate,
+	           empdel, proimgfile
+	    FROM(
+	        SELECT deptno, sys_connect_by_path(deptnm, ' ') deptnm
+	        FROM dept
+	        START WITH redeptno IS NULL
+	        CONNECT BY PRIOR deptno = redeptno
+	    ) join emp USING(deptno)
+	) join rank USING(rankno)
+</sql>
+
+<select id="selectEmp" parameterType="int" resultType="EmpVO">
+<!-- 	SELECT  empnm, empno, mgrno, deptnm, ranknm,  -->
+<!-- 	        empmail, emppw, empregno, emphp, empzip,  -->
+<!-- 	        empadd1 || empadd2 empadd, empgen, TO_CHAR(enterdate, 'YYYY-MM-DD') enterdate,  -->
+<!-- 	        TO_CHAR(leavedate, 'YYYY-MM-DD') leavedate, empdel -->
+<!-- 	FROM( -->
+<!-- 	    SELECT empno, mgrno, empnm, rankno, deptnm,  -->
+<!-- 	           empmail, emppw, empregno, emphp, empzip,  -->
+<!-- 	           empadd1, empadd2, empgen, enterdate, leavedate, -->
+<!-- 	           empdel -->
+<!-- 	    FROM( -->
+<!-- 	        SELECT deptno, sys_connect_by_path(deptnm, ' ') deptnm -->
+<!-- 	        FROM dept -->
+<!-- 	        START WITH redeptno IS NULL -->
+<!-- 	        CONNECT BY PRIOR deptno = redeptno -->
+<!-- 	    ) join emp USING(deptno) -->
+<!-- 	) join rank USING(rankno) -->
+<!-- 	WHERE empno = #{empno} -->
+	<include refid="selectEmp" />
+	WHERE empno = #{empno}
+</select>
+
+<select id="selectLoginEmp" parameterType="String" resultType="EmpVO">
+	<include refid="selectEmp" />
+	WHERE empmail = #{empmail}
+</select>
+
+<select id="selectChatEmpList" parameterType="EmpVO" resultType="EmpVO">
+	SELECT empno, proimgfile, empnm, empno, mgrno, deptnm, ranknm, 
+	        empmail, emppw, empregno, emphp, empzip, 
+	        empadd1 || empadd2 empadd, empgen, TO_CHAR(enterdate, 'YYYY-MM-DD') enterdate, 
+	        TO_CHAR(leavedate, 'YYYY-MM-DD') leavedate, empdel
+	FROM(
+	    SELECT proimgfile,empno, mgrno, empnm, rankno, deptnm, 
+	           empmail, emppw, empregno, emphp, empzip, 
+	           empadd1, empadd2, empgen, enterdate, leavedate,
+	           empdel
+	    FROM(
+	        SELECT deptno, sys_connect_by_path(deptnm, ' ') deptnm
+	        FROM dept
+	        START WITH redeptno IS NULL
+	        CONNECT BY PRIOR deptno = redeptno
+	    ) join emp USING(deptno)
+	) join rank USING(rankno)
+	WHERE empno != #{empno}
+  		<trim prefix="AND (" prefixOverrides="OR" suffix=")">
+			<if test="searchVO neq null and @org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+				INSTR(empnm, #{searchVO.searchWord}) > 0
+				</if>
+		</trim>					
+</select>
+
+	<update id="updateEmp" parameterType="EmpVO">
+			UPDATE emp
+		SET
+			 empmail= #{empmail},
+             emppw = #{emppw},
+             emphp = #{emphp},
+             empadd1 = #{empadd1},
+             empadd2 = #{empadd2},
+             empzip = #{empzip},
+             proimgfile = #{proimgfile}
+		WHERE empno = #{empno}
+	</update>
+
+
+</mapper>

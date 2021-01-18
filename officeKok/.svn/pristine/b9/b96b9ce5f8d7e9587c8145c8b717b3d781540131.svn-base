@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans:beans xmlns="http://www.springframework.org/schema/mvc"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:beans="http://www.springframework.org/schema/beans"
+	xmlns:c="http://www.springframework.org/schema/c"
+	xmlns:p="http://www.springframework.org/schema/p"
+	xsi:schemaLocation="http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-4.3.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd">
+
+	<context:component-scan base-package="kr.or.ddit" use-default-filters="false">
+		<context:include-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+		<context:include-filter type="annotation" expression="org.springframework.web.bind.annotation.ControllerAdvice"/>
+	</context:component-scan>
+	
+	<annotation-driven validator="validator" />
+	
+	<beans:bean id="IRVR" class="org.springframework.web.servlet.view.InternalResourceViewResolver" 
+		p:prefix="/WEB-INF/views/" p:suffix=".jsp"
+	/>
+	
+	<beans:bean id="tilesConfigurer" class="org.springframework.web.servlet.view.tiles3.TilesConfigurer" 
+		p:definitions="classpath:/kr/or/ddit/tiles/*-definitions.xml"
+		p:preparerFactoryClass="org.springframework.web.servlet.view.tiles3.SpringBeanPreparerFactory"
+	/>
+	
+	<beans:bean id="TVR" class="org.springframework.web.servlet.view.tiles3.TilesViewResolver" 
+		p:order="1"
+	/>
+	
+	<beans:bean id="BNVR" class="org.springframework.web.servlet.view.BeanNameViewResolver" 
+		p:order="2"
+	/>
+	
+<!-- 	다운로드뷰를 등록하는 공간 -->
+<!-- 	<beans:bean id="downloadView" class="kr.or.ddit.board.view.DownloadView" /> -->
+	
+<!-- 	뷰Preparer를 등록하는 공간 -->
+<!-- 	<beans:bean id="memberViewPreparer" class="kr.or.ddit.preparer.MemberViewPreparer" /> -->
+	
+	<default-servlet-handler/>
+	
+	<beans:bean id="multipartResolver" class="org.springframework.web.multipart.support.StandardServletMultipartResolver"></beans:bean>
+	
+	<beans:bean id="localeResolver" class="org.springframework.web.servlet.i18n.CookieLocaleResolver" 
+		p:cookieName="languageCookie"
+		p:cookieMaxAge="#{60*60*24*7}"
+	/>
+	
+	<interceptors>
+		<beans:bean class="org.springframework.web.servlet.i18n.LocaleChangeInterceptor" 
+			p:paramName="language"
+		/>
+		<interceptor>
+			<mapping path="/**/*.js"/>
+			<beans:bean class="org.springframework.web.servlet.mvc.WebContentInterceptor" 
+				p:useCacheControlHeader="true"
+				p:useCacheControlNoStore="true"
+				p:useExpiresHeader="true"
+				p:cacheSeconds="0"
+			/>
+		</interceptor>
+	</interceptors>
+	
+	<beans:bean id="messageSource" class="org.springframework.context.support.ResourceBundleMessageSource" 
+		p:basenames="kr.or.ddit.msgs.message,kr.or.ddit.msgs.CustomValidationMessage"
+	/>
+	
+	<beans:bean id="validator" class="org.springframework.validation.beanvalidation.LocalValidatorFactoryBean" 
+		p:validationMessageSource-ref="messageSource"
+	/>
+</beans:beans>

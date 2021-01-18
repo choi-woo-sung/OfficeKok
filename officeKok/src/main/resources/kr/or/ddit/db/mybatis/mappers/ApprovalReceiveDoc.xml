@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.approval.dept.dao.IApprovalReceiveDAO">
+	
+	<insert id="insertRecipient" parameterType="ApprovalRecipientVO">
+		<selectKey keyProperty="recipientno" order="BEFORE" resultType="int">
+			SELECT NVL(MAX(recipientno), 0) + 1 AS recipientno 
+			FROM recipient
+		</selectKey>
+		INSERT INTO recipient (recipientno, deptno, apprdocno) 
+		VALUES (#{recipientno, jdbcType=NUMERIC}, #{deptno, jdbcType=NUMERIC}, #{apprdocno, jdbcType=VARCHAR})
+	</insert>
+	
+	<insert id="insertApprReceiveDoc" parameterType="ApprovalRecieveDocVO">
+		<selectKey keyProperty="recdocno" order="BEFORE" resultType="int">
+			SELECT NVL(MAX(recdocno), 0) + 1 AS recdocno
+			FROM receivedoc
+		</selectKey>
+		INSERT INTO receivedoc (recdocno, chargerno, recipientno, receivedocreadchk) 
+		VALUES (#{recdocno, jdbcType=NUMERIC}, #{chargerno, jdbcType=NUMERIC}, #{recipientno, jdbcType=NUMERIC}, 'N') 
+	</insert>
+	
+	<insert id="insertCharger" parameterType="ApprovalChargerVO">
+		<selectKey keyProperty="chargerno" order="BEFORE" resultType="int">
+			SELECT NVL(MAX(chargerno), 0) + 1 AS chargerno
+			FROM charger
+		</selectKey>
+		INSERT INTO charger (chargerno, chargerempno, processchk, returnchk) 
+		VALUES (#{chargerno, jdbcType=NUMERIC}, #{chargerempno, jdbcType=NUMERIC}, 'N', 'N')
+	</insert>
+
+	<select id="selectRecipient" parameterType="string" resultType="ApprovalRecipientVO">
+		SELECT A.*, empnm, deptnm
+		FROM recipient A INNER JOIN receivedoc B ON A.recipientno = B.recipientno
+		                INNER JOIN charger C ON B.chargerno = C.chargerno
+		                INNER JOIN emp D ON C.chargerempno = D.empno
+		                INNER JOIN dept E ON A.deptno = E.deptno
+					WHERE A.apprdocno = #{apprdocno, jdbcType=VARCHAR}
+	</select>
+</mapper>

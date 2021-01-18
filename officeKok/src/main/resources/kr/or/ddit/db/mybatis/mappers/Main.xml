@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.main.dao.IMainDAO">
+
+	<select id="selectMainWorkTime" resultType="AttendanceVO" parameterType="int">
+		SELECT 
+		A.TASDDATENO
+		,B.TASTATUSNO
+		,B.EMPNO
+		,NVL(B.GOWORKTIME, '00:00') AS GOWORKTIME
+		,NVL(B.AFTERWORKTIME, '00:00') AS AFTERWORKTIME
+		FROM TASDDATE A LEFT OUTER JOIN (SELECT * FROM TASTATUS WHERE TASDDATENO = (SELECT TASDDATENO 
+		                                            FROM TASDDATE
+		                                            WHERE YEARLY = TO_CHAR(SYSDATE, 'YYYY') 
+		                                            AND MONTHLY = TO_CHAR(SYSDATE, 'MM') 
+		                                            AND DAILY = TO_CHAR(SYSDATE, 'DD')) 
+		                            AND EMPNO = #{empno})B
+		ON A.TASDDATENO = B.TASDDATENO
+		WHERE A.TASDDATENO = (SELECT TASDDATENO 
+		                        FROM TASDDATE
+		                        WHERE YEARLY = TO_CHAR(SYSDATE, 'YYYY') 
+		                        AND MONTHLY = TO_CHAR(SYSDATE, 'MM') 
+		                        AND DAILY = TO_CHAR(SYSDATE, 'DD'))
+	</select>
+	
+	<select id="selectMainApprTodoList" parameterType="int" resultType="ApprovalDocVO">
+		
+		SELECT apprdocno, apprdocsubject, TO_CHAR(apprdocdate, 'YYYY/MM/DD') AS apprdocdate, apprdocstate, docformnm, empnm, deptnm
+		FROM 
+		(
+			SELECT B.apprdocno, apprdocsubject, apprdocdate, apprdocstate, docformnm, empnm, deptnm 
+			FROM
+			(
+				SELECT apprdocno, MAX(apprstepprior) + 1 AS apprstepprior
+			    FROM apprhis A, apprstep B
+			    WHERE A.apprstepno = B.apprstepno
+			    GROUP BY apprdocno, apprstepprior
+			) A, 
+			(
+				SELECT A.*, docformnm, empnm, deptnm
+				FROM apprdoc A, docform B, emp C, dept D
+				WHERE A.docformno = B.docformno
+				AND draftno = C.empno
+				AND C.deptno = D.deptno
+			) B, apprstep C
+			WHERE A.apprdocno = B.apprdocno
+			AND B.apprlineno = C.apprlineno
+			AND A.apprstepprior = C.apprstepprior
+			AND apprdocstate = 2
+			AND stepempno = #{empno, jdbcType=NUMERIC}
+			ORDER BY apprdocdate DESC
+		)
+	</select>
+
+	<select id="selectUnreadCount" parameterType="int" resultType="NoteVO">
+		SELECT noteno, e.empnm sender, notesend, m.empnm receiver, notereceive, 
+			   notecate, filtercatenm, notesubject, notecontent, TO_CHAR(notedate, 'YYYY-MM-DD HH24:mi') notedate, 
+			   notesave, notedel, noteread, noteurgent
+		FROM (
+			SELECT *
+			FROM note
+			WHERE notereceive = #{empno, jdbcType=NUMERIC}
+		) note, emp e, emp m, filtercate
+		WHERE notecate = filtercateno
+		  AND notesend = e.empno
+		  AND notereceive = m.empno
+		  AND notesave = 'Y'
+		  AND notedel = 'N'
+		  AND noteread = 'N'
+	</select>
+</mapper>

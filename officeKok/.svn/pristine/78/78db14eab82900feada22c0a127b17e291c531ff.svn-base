@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE tiles-definitions PUBLIC "-//Apache Software Foundation//DTD Tiles Configuration 3.0//EN" "http://tiles.apache.org/dtds/tiles-config_3_0.dtd" >
+<tiles-definitions>
+	<definition name="absractParent" template="/WEB-INF/views/layout.jsp">
+		<put-attribute name="preScript" value="/includee/preScript.jsp" />
+		<put-attribute name="headerMenu" value="/includee/headerMenu.jsp" />
+		<put-attribute name="topMenu" value="/includee/topMenu.jsp" />
+		<put-attribute name="leftMenu" value="/includee/leftMenu.jsp" />
+<!-- 		<put-attribute name="footer" value="/includee/footer.jsp" /> -->
+	</definition>
+	<definition name="main/*" extends="absractParent">
+		<put-attribute name="content" value="/WEB-INF/views/main/{1}.jsp" />
+	</definition>
+	<definition name="approval/*" extends="absractParent">
+		<put-attribute name="content" value="/WEB-INF/views/approval/{1}.jsp" />
+	</definition>
+	<definition name="organization/*" extends="absractParent">
+		<put-attribute name="content" value="/WEB-INF/views/organization/{1}.jsp" />
+	</definition>
+	<definition name="drive/*" extends="absractParent">
+		<put-attribute name="content" value="/WEB-INF/views/drive/{1}.jsp" />
+	</definition>
+	<definition name="vote/*" extends="absractParent">
+		<put-attribute name="content" value="/WEB-INF/views/vote/{1}.jsp" />
+	</definition>
+	<definition name="note/*" extends="absractParent">
+		<put-attribute name="content" value="/WEB-INF/views/note/{1}.jsp" />
+	</definition>
+	<definition name="attendance/*" extends="absractParent">
+		<put-attribute name="content" value="/WEB-INF/views/attendance/{1}.jsp" />
+	</definition>
+	<definition name="cal/*" extends="absractParent">
+		<put-attribute name="content" value="/WEB-INF/views/cal/{1}.jsp" />
+	</definition>
+	<definition name="mail/*" extends="absractParent">
+		<put-attribute name="content" value="/WEB-INF/views/mail/{1}.jsp" />
+	</definition>
+	<definition name="board/*" extends="absractParent">
+		<put-attribute name="content" value="/WEB-INF/views/board/{1}.jsp" />
+	</definition>
+	<definition name="addrBook/*" extends="absractParent">
+		<put-attribute name="content" value="/WEB-INF/views/addrBook/{1}.jsp" />
+	</definition>
+	<definition name="addrGroupMgr/*" extends="absractParent">
+		<put-attribute name="content" value="/WEB-INF/views/addrGroupMgr/{1}.jsp" />
+	</definition>
+	<definition name="conference/*" extends="absractParent">
+		<put-attribute name="content" value="/WEB-INF/views/conference/{1}.jsp" />
+	</definition>
+	<definition name="chat/*" extends="absractParent">
+		<put-attribute name="content" value="/WEB-INF/views/chat/{1}.jsp" />
+	</definition>
+	<definition name="mgr/*" extends="absractParent">
+		<put-attribute name="content" value="/WEB-INF/views/mgr/{1}.jsp" />
+	</definition>
+	<definition name="mypage/*" extends="absractParent">
+		<put-attribute name="content" value="/WEB-INF/views/mypage/{1}.jsp" />
+	</definition>
+</tiles-definitions>

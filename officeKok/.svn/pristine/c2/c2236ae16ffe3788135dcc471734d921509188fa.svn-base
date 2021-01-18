@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.organization.dao.IOrganizationDAO">
+	
+	<select id="selectUpperDept" resultType="DeptVO">
+		SELECT *
+		FROM DEPT
+		WHERE REDEPTNO IS NULL OR REDEPTNO = 1
+		ORDER BY DEPTNO ASC
+	</select>
+	
+	<select id="selectOrganization" resultType="OrganizationVO">
+		SELECT A.*, DEPT.*, EMP.*, RANK.*
+		FROM
+			(SELECT DEPT.DEPTNO, COUNT(*) AS CNT
+			FROM DEPT LEFT OUTER JOIN EMP ON DEPT.DEPTNO = EMP.DEPTNO
+			GROUP BY DEPT.DEPTNO) A LEFT OUTER JOIN EMP ON A.DEPTNO = EMP.DEPTNO 
+                        			LEFT OUTER JOIN RANK ON EMP.RANKNO = RANK.RANKNO
+                        			LEFT OUTER JOIN DEPT ON DEPT.DEPTNO = A.DEPTNO
+		ORDER BY EMP.RANKNO ASC
+	</select>
+	
+	<select id="selectDeptnoMax" resultType="int">
+		SELECT MAX(DEPTNO)
+		FROM DEPT
+	</select>
+	
+	<select id="selectDept" resultType="DeptVO">
+		SELECT *
+		FROM DEPT
+	</select>
+	
+	<select id="selectRoot" resultType="OrganizationVO">
+		SELECT *
+		FROM DEPT LEFT OUTER JOIN EMP USING(DEPTNO)
+		 	 	  LEFT OUTER JOIN RANK USING(RANKNO)
+		WHERE DEPTNO = 1
+	</select>
+	
+</mapper>

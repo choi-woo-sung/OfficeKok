@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.approval.appr.dao.IApprovalStepDAO">
+
+	<insert id="insertApprovalStep" parameterType="ApprovalLineVO">
+		<selectKey resultType="int" order="BEFORE" keyProperty="apprstepno">
+			SELECT NVL(MAX(apprstepno), 0) + 1
+			FROM apprstep
+		</selectKey>
+		INSERT ALL
+		<foreach collection="apprStepList" item="apprstep" index="idx">
+			INTO apprstep (apprstepno, apprtypeno, apprlineno, stepempno, apprstepprior)
+				VALUES (#{apprstepno, jdbcType=NUMERIC} + #{idx, jdbcType=NUMERIC}, #{apprstep.apprtypeno, jdbcType=NUMERIC},    
+						#{apprstep.apprlineno, jdbcType=NUMERIC}, #{apprstep.stepempno, jdbcType=NUMERIC}, 
+						#{apprstep.apprstepprior, jdbcType=NUMERIC}
+			)
+		</foreach>
+		SELECT * FROM DUAL
+	</insert>
+	
+	<resultMap type="ApprovalStepVO" id="apprStep" autoMapping="true">
+		<id property="apprstepno" column="apprstepno" />
+		<association property="apprHistory" javaType="ApprovalHistoryVO" autoMapping="true"></association>
+	</resultMap>
+	
+	<select id="selectApprovalStepList" parameterType="string" resultMap="apprStep">
+		SELECT A.*, apprtype, apprhisno, D.apprdocno, TO_CHAR(apprhisdate, 'YYYY-MM-DD') AS apprhisdate, 
+						NVL(apprhisstate, 0) AS apprhisstate, apprhisopinion, empnm, deptnm
+		FROM apprstep A LEFT OUTER JOIN apprtype B ON A.apprtypeno = B.apprtypeno
+		                LEFT OUTER JOIN apprdoc C ON A.apprlineno = C.apprlineno
+		                LEFT OUTER JOIN apprhis D ON (C.apprdocno = D.apprdocno AND D.apprstepno = A.apprstepno)
+		                LEFT OUTER JOIN emp E ON A.stepempno = E.empno
+		                LEFT OUTER JOIN dept F ON E.deptno = F.deptno
+		WHERE C.apprdocno = #{apprdocno, jdbcType=VARCHAR}
+		ORDER BY apprstepprior
+	</select>
+
+	<select id="selectFirstStep" parameterType="string" resultType="int">
+		SELECT apprstepno
+		FROM apprdoc A LEFT OUTER JOIN apprstep B ON A.apprlineno = B.apprlineno
+		WHERE draftno = stepempno
+		AND apprstepprior = 1
+		AND apprdocno = #{apprdocno, jdbcType=VARCHAR}
+	</select>
+	
+	<select id="selectLastStep" parameterType="string" resultType="int">
+		SELECT MAX(apprstepprior) AS apprstepprior
+		FROM apprdoc A, apprstep B
+		WHERE A.apprlineno = B.apprlineno
+		AND apprdocno = #{apprdocno, jdbcType=VARCHAR}
+	</select>
+	
+	<update id="updateApprovalStep" parameterType="ApprovalLineVO">
+		<foreach collection="apprstepList" item="apprstep">
+			UPDATE apprstep 
+				SET 
+					apprtypeno = #{apprstep.apprtypeno, jdbcType=NUMERIC}, 
+					proxyapprno = #{apprstep.proxyapprno, jdbcType=NUMERIC},
+					apprlineno = #{apprstep.apprlineno, jdbcType=NUMERIC},
+					stepempno = #{apprstep.stepempno, jdbcType=NUMERIC},
+					apprstepprior = #{apprstep.apprstepprior, jdbcType=NUMERIC}
+			WHERE apprlineno = #{apprstep.apprlineno, jdbcType=NUMERIC}
+				AND apprstepno = #{apprstep.apprstepno, jdbcType=NUMERIC}
+		</foreach>
+	</update>
+	
+	<delete id="deleteApprovalStepByLineNo" parameterType="int">
+		DELETE FROM apprstep
+		WHERE apprlineno = #{apprlineno, jdbcType=NUMERIC}
+	</delete>
+	
+	<delete id="deleteApprovalStepByStepNo" parameterType="int">
+		DELETE FROM apprstep
+		WHERE apprstepno = #{apprstepno, jdbcType=NUMERIC}
+	</delete>
+</mapper>

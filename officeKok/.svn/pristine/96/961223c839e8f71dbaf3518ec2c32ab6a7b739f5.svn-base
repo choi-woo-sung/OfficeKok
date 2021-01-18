@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.approval.appr.dao.IApprovalAttDAO">
+	<insert id="insertApprovalAtt" parameterType="ApprovalDocVO">
+		<selectKey resultType="int" order="BEFORE" keyProperty="apprattno">
+			SELECT NVL(MAX(apprattno), 0) + 1 AS apprattno
+			FROM appratt
+		</selectKey>
+
+		INSERT ALL
+		<foreach collection="apprAttList" item="attatch" index="idx">
+			INTO appratt (
+				apprattno, apprdocno, apprattoriginalfilename, apprattsavefilename,
+				apprattfilesize, apprattmime
+			) VALUES (
+				#{apprattno, jdbcType=NUMERIC} + #{idx, jdbcType=NUMERIC}, #{apprdocno, jdbcType=VARCHAR}, #{attatch.apprattoriginalfilename, jdbcType=VARCHAR},
+				#{attatch.apprattsavefilename, jdbcType=VARCHAR}, #{attatch.apprattfilesize, jdbcType=VARCHAR}, 
+				#{attatch.apprattmime, jdbcType=VARCHAR}
+			)
+		</foreach>
+		SELECT * FROM DUAL
+	</insert>
+
+	<insert id="insertApprovalHisAtt" parameterType="ApprovalHistoryVO">
+		<selectKey resultType="int" order="BEFORE" keyProperty="apprhisattno">
+			SELECT NVL(MAX(apprhisattno), 0) + 1 AS apprhisattno
+			FROM apprhisatt
+		</selectKey>
+		INSERT ALL
+		<foreach collection="apprHisAtt" item="attatch" index="idx">
+			INTO apprhisatt (
+				apprhisattno, apprhisoriginalfilename, apprhissavefilename, apprhisfilesize, apprhismime, apprhisno
+			) VALUES (
+				#{apprhisattno, jdbcType=NUMERIC} + #{idx, jdbcType=NUMERIC}, #{attatch.apprhisoriginalfilename, jdbcType=VARCHAR}, 
+				#{attatch.apprhissavefilename, jdbcType=VARCHAR}, #{attatch.apprhisfilesize, jdbcType=VARCHAR}, 
+				#{attatch.apprhismime, jdbcType=VARCHAR}, #{apprhisno, jdbcType=NUMERIC}
+			)
+			SELECT * FROM DUAL
+		</foreach>
+	</insert>
+</mapper>

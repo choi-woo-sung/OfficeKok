@@ -1,0 +1,327 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.approval.appr.dao.IApprovalDocDAO">
+
+	<insert id="insertApprovalDoc" parameterType="ApprovalDocVO">
+		<selectKey keyProperty="apprdocno" order="BEFORE" resultType="string">
+			SELECT #{docformno, jdbcType=VARCHAR} || '-' || LPAD(NVL(TO_NUMBER(SUBSTR(MAX(apprdocno), 6)), 0) + 1, 3, '0') AS apprdocno
+			FROM apprdoc
+			WHERE docformno = #{docformno, jdbcType=VARCHAR}
+		</selectKey>
+		INSERT INTO apprdoc (apprdocno, docformno, apprlineno, draftno, apprdocsubject, apprdoccontent, apprdocstate, apprdocdate)
+		VALUES (#{apprdocno, jdbcType=VARCHAR}, #{docformno, jdbcType=VARCHAR}, #{apprlineno, jdbcType=NUMERIC}, 
+				#{draftno, jdbcType=NUMERIC}, #{apprdocsubject, jdbcType=VARCHAR}, #{apprdoccontent, jdbcType=VARCHAR}, 
+				#{apprdocstate, jdbcType=NUMERIC}, SYSDATE)
+	</insert>
+
+	<sql id="searchFlag">
+		<trim prefix="AND (" prefixOverrides="OR" suffix=")">
+			<if test="searchDetail neq null">
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchDetail.empnm)">
+					INSTR(empnm, #{searchDetail.empnm, jdbcType=VARCHAR}) > 0
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchDetail.docformnm)">
+					INSTR(docformnm, #{searchDetail.docformnm, jdbcType=VARCHAR}) > 0
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchDetail.apprdocsubject)">
+					INSTR(apprdocsubject, #{searchDetail.apprdocsubject, jdbcType=VARCHAR}) > 0
+				</if>
+				<if test="searchDetail.apprdocstate neq null and searchDetail.apprdocstate neq 1 and searchDetail.apprdocstate neq 0">
+					apprdocstate = #{searchDetail.apprdocstate, jdbcType=VARCHAR}
+				</if>
+				
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(searchDetail.start) 
+						and @org.apache.commons.lang3.StringUtils@isNotBlank(searchDetail.end)">
+					<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(service)">
+						<choose>
+							<when test="service eq 'todo' or service eq 'temp'">
+								<![CDATA[
+									apprdocdate >= TO_DATE(#{searchDetail.start, jdbcType=DATE}, 'YYYY-MM-DD')
+									AND apprdocdate <= TO_DATE(#{searchDetail.end, jdbcType=DATE}, 'YYYY-MM-DD')
+								]]>
+							</when>
+							<otherwise>
+								<![CDATA[
+									apprhisdate >= TO_DATE(#{searchDetail.start, jdbcType=DATE}, 'YYYY-MM-DD')
+									AND apprhisdate <= TO_DATE(#{searchDetail.end, jdbcType=DATE}, 'YYYY-MM-DD')
+								]]>
+							</otherwise>
+						</choose>
+					</if>
+				</if>
+			</if>
+		</trim>
+	</sql>
+	
+	<sql id="currentApprStep">
+		SELECT apprdocno, MAX(apprstepprior) + 1 AS apprstepprior
+	    FROM apprhis A, apprstep B
+	    WHERE A.apprstepno = B.apprstepno
+	    GROUP BY apprdocno, apprstepprior
+	</sql>
+	
+	<sql id="lastApprStep">
+		SELECT A.apprdocno, MAX(D.apprstepprior) apprstepprior
+		FROM apprdoc A INNER JOIN apprline C ON A.apprlineno = C.apprlineno 
+		INNER JOIN apprstep D ON C.apprlineno = D.apprlineno 
+		WHERE draftno = #{empno, jdbcType=NUMERIC}
+		GROUP BY apprdocno
+	</sql>
+	
+	<sql id="common">
+		SELECT A.*, docformnm, empnm, deptnm
+		FROM apprdoc A, docform B, emp C, dept D
+		WHERE A.docformno = B.docformno
+		AND draftno = C.empno
+		AND C.deptno = D.deptno 
+	</sql>
+	
+	<sql id="apprHistoryCommon">
+		SELECT A.*
+	    FROM apprhis A, apprstep B
+	    WHERE A.apprstepno = B.apprstepno
+	    AND stepempno = #{empno, jdbcType=NUMERIC}
+	</sql>
+	
+	<sql id="draftList">
+		SELECT B.*, docformnm, empnm, deptnm, apprhisdate
+		FROM
+		(
+		    SELECT A.apprdocno, MAX(D.apprstepprior) apprstepprior
+		        FROM apprdoc A INNER JOIN apprline C ON A.apprlineno = C.apprlineno 
+		                        INNER JOIN apprstep D ON C.apprlineno = D.apprlineno 
+		            GROUP BY apprdocno
+		) A INNER JOIN apprdoc B ON A.apprdocno = B.apprdocno
+		    LEFT OUTER JOIN apprstep C ON (B.apprlineno = C.apprlineno AND A.apprstepprior = C.apprstepprior)
+		    LEFT OUTER JOIN apprhis D ON (C.apprstepno = D.apprstepno AND A.apprdocno = D.apprdocno)
+		    INNER JOIN docform E ON B.docformno = E.docformno
+		    INNER JOIN emp F ON B.draftno = F.empno
+		    INNER JOIN dept G ON F.deptno = G.deptno  
+			WHERE draftno = #{empno, jdbcType=NUMERIC}
+        	AND apprdocstate NOT IN(1, 5)
+	</sql>
+
+	<sql id="tempList">
+		<include refid="common" />
+		AND draftno = #{empno, jdbcType=NUMERIC}
+		AND apprdocstate = 1
+	</sql>
+	
+	<sql id="todoList">
+		SELECT B.apprdocno, apprdocsubject, apprdocdate, apprdocstate, docformnm, empnm, deptnm 
+		FROM 
+		(
+			SELECT apprdocno, MAX(apprstepprior) + 1 AS apprstepprior
+		    FROM apprhis A, apprstep B
+		    WHERE A.apprstepno = B.apprstepno
+		    GROUP BY apprdocno, apprstepprior
+		) A, 
+		(
+			SELECT A.*, docformnm, empnm, deptnm
+			FROM apprdoc A, docform B, emp C, dept D
+			WHERE A.docformno = B.docformno
+			AND draftno = C.empno
+			AND C.deptno = D.deptno
+		) B, apprstep C
+		WHERE A.apprdocno = B.apprdocno
+		AND B.apprlineno = C.apprlineno
+		AND A.apprstepprior = C.apprstepprior
+		AND apprdocstate = 2
+		AND stepempno = #{empno, jdbcType=NUMERIC}
+	</sql>
+	
+	<sql id="apprCommon">
+		SELECT A.*, apprhisdate, apprhisstate, docformnm, empnm, deptnm 
+		FROM apprdoc A LEFT OUTER JOIN apprhis B ON A.apprdocno = B.apprdocno
+                        LEFT OUTER JOIN apprstep C ON (A.apprlineno = C.apprlineno AND B.apprstepno = C.apprstepno)
+                        INNER JOIN emp D ON draftno = D.empno
+                        INNER JOIN dept E ON D.deptno = E.deptno
+                        INNER JOIN docform F ON A.docformno = F.docformno
+	</sql>
+	
+	<sql id="procList">
+		<include refid="apprCommon" />
+                        WHERE stepempno = #{empno, jdbcType=NUMERIC}
+                        AND A.apprdocstate = 2
+	</sql>
+	
+	<sql id="completeList">
+		<include refid="apprCommon" />
+                        WHERE stepempno = #{empno, jdbcType=NUMERIC}
+						AND apprdocstate = 3
+	</sql>
+	
+	<sql id="rejectList">
+		<include refid="apprCommon" />
+						WHERE stepempno = #{empno, jdbcType=NUMERIC}
+						AND apprdocstate = 4
+	</sql>
+	
+	<select id="selectApprDraftCnt" parameterType="PagingVO" resultType="int">
+		SELECT COUNT(*)
+		FROM 
+		(
+			<include refid="draftList" />
+			<include refid="searchFlag" />
+		)
+	</select>
+
+	<select id="selectApprDraftList" parameterType="PagingVO" resultType="ApprovalDocVO">
+		SELECT A.*
+		FROM 
+		(
+			SELECT ROWNUM rn, apprdocno, apprdocsubject, apprdocstate,
+					TO_CHAR(apprdocdate, 'YYYY-MM-DD') AS apprdocdate, 
+					docformnm, empnm, deptnm, TO_CHAR(apprhisdate, 'YYYY-MM-DD') AS apprhisdate
+			FROM
+			(
+				<include refid="draftList" />
+				<include refid="searchFlag" />
+				ORDER BY apprdocdate DESC
+			) A
+		) A WHERE rn BETWEEN #{startRow, jdbcType=NUMERIC} AND #{endRow, jdbcType=NUMERIC}
+	</select>
+	
+	<select id="selectApprTempCnt" parameterType="PagingVO" resultType="int">
+		SELECT COUNT(*)
+		FROM 
+		(
+			<include refid="tempList" />
+			<include refid="searchFlag" />
+		)
+	</select>
+	
+	<select id="selectApprTempList" parameterType="PagingVO" resultType="ApprovalDocVO">
+		SELECT A.*
+		FROM
+		(
+			SELECT ROWNUM rn, apprdocno, apprdocsubject, 
+					TO_CHAR(A.apprdocdate, 'YYYY-MM-DD') apprdocdate, 
+					docformnm, empnm, deptnm
+			FROM
+			(
+				<include refid="tempList" />
+				<include refid="searchFlag" />
+				ORDER BY apprdocdate DESC
+			) A
+		) A WHERE rn BETWEEN #{startRow, jdbcType=NUMERIC} AND #{endRow, jdbcType=NUMERIC}
+	</select>
+	
+	<select id="selectApprTodoCnt" parameterType="PagingVO" resultType="int">
+		SELECT COUNT(*) 
+		FROM
+		(
+			<include refid="todoList" />
+			<include refid="searchFlag" />
+		)
+	</select>
+	
+	<select id="selectApprTodoList" parameterType="PagingVO" resultType="ApprovalDocVO">
+		SELECT A.*
+		FROM
+		(
+			SELECT ROWNUM rn, apprdocno, apprdocsubject, 
+					TO_CHAR(A.apprdocdate, 'YYYY-MM-DD') apprdocdate, 
+					apprdocstate, docformnm, empnm, deptnm
+			FROM
+			(
+				<include refid="todoList" />
+				<include refid="searchFlag" />
+				ORDER BY apprdocdate DESC
+			) A
+		) A WHERE rn BETWEEN #{startRow, jdbcType=NUMERIC} AND #{endRow, jdbcType=NUMERIC} 
+	</select>
+	
+	<select id="selectApprProcCnt" parameterType="PagingVO" resultType="int">
+		SELECT COUNT(*)
+		FROM 
+		(
+			<include refid="procList" />
+			<include refid="searchFlag" />
+		)
+	</select>
+	
+	<select id="selectApprProcList" parameterType="PagingVO" resultType="ApprovalDocVO">
+		SELECT A.*
+		FROM
+		(
+			SELECT ROWNUM rn, apprdocno, TO_CHAR(apprhisdate, 'YYYY-MM-DD') AS apprhisdate, apprhisstate, apprdocsubject, 
+				TO_CHAR(apprdocdate, 'YYYY-MM-DD') AS apprdocdate, apprdocstate, docformnm, empnm, deptnm
+			FROM
+			(
+				<include refid="procList" />
+				<include refid="searchFlag" />
+				ORDER BY apprhisdate DESC
+			) A
+		) A WHERE rn BETWEEN #{startRow, jdbcType=NUMERIC} AND #{endRow, jdbcType=NUMERIC}
+	</select>
+	
+	<select id="selectApprCompleteCnt" parameterType="PagingVO" resultType="int">
+		SELECT COUNT(*)
+		FROM 
+		(
+			<include refid="completeList" />
+			<include refid="searchFlag" />
+		)
+	</select>
+	
+	<select id="selectApprCompleteList" parameterType="PagingVO" resultType="ApprovalDocVO">
+		SELECT A.*
+		FROM
+		(
+			SELECT ROWNUM rn, apprdocno, TO_CHAR(apprhisdate, 'YYYY-MM-DD') AS apprhisdate, apprhisstate, apprdocsubject, 
+				TO_CHAR(apprdocdate, 'YYYY-MM-DD') AS apprdocdate, apprdocstate, docformnm, empnm, deptnm
+			FROM
+			(
+				<include refid="completeList" />
+				<include refid="searchFlag" />
+				ORDER BY apprhisdate DESC
+			) A
+		) A WHERE rn BETWEEN #{startRow, jdbcType=NUMERIC} AND #{endRow, jdbcType=NUMERIC}
+	</select>
+	
+	<select id="selectApprRejectCnt" parameterType="PagingVO" resultType="int">
+		SELECT COUNT(*)
+		FROM 
+		(
+			<include refid="rejectList" />
+			<include refid="searchFlag" />
+		)
+	</select>
+	
+	<select id="selectApprRejectList" parameterType="PagingVO" resultType="ApprovalDocVO">
+		SELECT A.*
+		FROM
+		(
+			SELECT ROWNUM rn, apprdocno, TO_CHAR(apprhisdate, 'YYYY-MM-DD') AS apprhisdate, apprdocsubject, 
+					apprdocstate, TO_CHAR(apprdocdate, 'YYYY-MM-DD') AS apprdocdate, docformnm, empnm, deptnm
+			FROM
+			(
+				<include refid="rejectList" />
+				<include refid="searchFlag" />
+				ORDER BY apprhisdate DESC
+			) A
+		) A WHERE rn BETWEEN #{startRow, jdbcType=NUMERIC} AND #{endRow, jdbcType=NUMERIC}
+	</select>
+	
+	<resultMap type="ApprovalDocVO" id="approvalDoc" autoMapping="true">
+		<id property="apprdocno" column="apprdocno" />
+		<collection property="apprAttList" javaType="java.util.List" ofType="ApprovalAttVO" autoMapping="true"></collection>
+	</resultMap>
+
+	<select id="selectApprovalDoc" parameterType="string" resultMap="approvalDoc">
+		SELECT A.apprdocno, docformno, apprlineno, draftno, apprdocsubject, apprdoccontent, 
+        		apprdocstate, TO_CHAR(apprdocdate, 'YYYY-MM-DD') AS apprdocdate, empnm, deptnm, B.*
+		FROM
+		(
+			<include refid="common" />
+		) A LEFT OUTER JOIN appratt B ON A.apprdocno = B.apprdocno
+			WHERE A.apprdocno = #{apprdocno, jdbcType=VARCHAR}
+	</select>
+
+	<update id="updateApprovalDocState" parameterType="ApprovalDocVO">
+		UPDATE apprdoc SET apprdocstate = #{apprdocstate, jdbcType=NUMERIC}
+		WHERE apprdocno = #{apprdocno, jdbcType=VARCHAR}
+	</update>
+	
+</mapper>

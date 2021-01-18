@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.note.dao.INoteTrashDAO">
+<sql id="searchFrag">
+	<trim prefix="AND (" prefixOverrides="OR" suffix=")">
+		<if test="searchVO neq null and @org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+			<if test="'person' eq searchVO.searchType">
+				m.empnm LIKE '%'||#{searchVO.searchWord}||'%'
+				OR e.empnm LIKE '%'||#{searchVO.searchWord}||'%'
+			</if>
+			<if test="'title' eq searchVO.searchType">
+				notesubject LIKE '%'||#{searchVO.searchWord}||'%'
+			</if>
+			<if test="'content' eq searchVO.searchType">
+				notecontent LIKE '%'||#{searchVO.searchWord}||'%'
+			</if>
+		</if>
+	</trim>
+</sql>
+
+<select id="selectTrashNoteCount" parameterType="PagingVO" resultType="int">
+	SELECT COUNT(*)
+	FROM(
+		SELECT noteno, e.empnm sender, notesend, m.empnm receiver, notereceive, 
+			   notecate, filtercatenm, notesubject, notecontent, TO_CHAR(notedate, 'YYYY-MM-DD HH24:mi') notedate, 
+			   notesave, notedel, noteurgent, TO_CHAR(notedeldate, 'YYYY-MM-DD HH24:mi') notedeldate
+		FROM (
+			SELECT *
+			FROM note
+			WHERE notesend = #{empno, jdbcType=NUMERIC}
+			   OR notereceive = #{empno, jdbcType=NUMERIC}
+		) note, emp e, emp m, filtercate
+		WHERE notecate = filtercateno
+		  AND notesend = e.empno
+		  AND notereceive = m.empno
+		  AND notedel = 'Y'
+		  <include refid="searchFrag" />
+	)
+</select>
+
+<select id="selectTrashNoteList" parameterType="PagingVO" resultType="NoteVO">
+	SELECT *
+	FROM(
+		SELECT ROWNUM rn, A.*, 
+			   CASE WHEN notesend = #{empno, jdbcType=NUMERIC} THEN '송신' 
+			   	    WHEN notereceive = #{empno, jdbcType=NUMERIC} THEN '수신'
+			   	    ELSE NULL END AS notechk
+		FROM(
+			SELECT noteno, e.empnm sender, notesend, m.empnm receiver, notereceive, 
+				   notecate, filtercatenm, notesubject, notecontent, TO_CHAR(notedate, 'YYYY-MM-DD HH24:mi') notedate, 
+				   notesave, notedel, noteurgent, TO_CHAR(notedeldate, 'YYYY-MM-DD HH24:mi') notedeldate
+			FROM(
+				SELECT *
+				FROM note
+				WHERE notesend = #{empno, jdbcType=NUMERIC}
+				   OR notereceive = #{empno, jdbcType=NUMERIC}
+			) note, emp e, emp m, filtercate
+			WHERE notecate = filtercateno
+			  AND notesend = e.empno
+			  AND notereceive = m.empno
+			  AND notedel = 'Y'
+			  <include refid="searchFrag" />
+			ORDER BY notedeldate DESC
+		) A
+	)
+	<![CDATA[
+    	WHERE rn >= #{startRow} AND rn <= #{endRow}
+    ]]>
+</select>
+
+<select id="selectTrashNote" parameterType="NoteVO" resultType="NoteVO">
+	SELECT *
+	FROM(
+		SELECT ROWNUM rn, A.*
+		FROM(
+			SELECT noteno, e.empnm sender, notesend, m.empno, m.empnm receiver, notereceive, 
+				   notecate, filtercatenm, notesubject, notecontent, TO_CHAR(notedate, 'YYYY-MM-DD HH24:mi') notedate, 
+				   notesave, notedel, noteurgent, TO_CHAR(notedeldate, 'YYYY-MM-DD HH24:mi') notedeldate
+			FROM(
+                SELECT *
+                FROM note
+                WHERE notesend = #{empno, jdbcType=NUMERIC}
+                   OR notereceive = #{empno, jdbcType=NUMERIC}
+            ) note, emp e, emp m, filtercate
+			WHERE notecate = filtercateno
+			  AND notesend = e.empno
+			  AND notereceive = m.empno
+			  AND notedel = 'Y'
+              AND noteno = #{noteno}
+			ORDER BY notedeldate DESC
+		) A
+	)
+</select>
+</mapper>

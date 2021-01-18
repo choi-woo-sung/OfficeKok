@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:c="http://www.springframework.org/schema/c"
+	xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:websocket="http://www.springframework.org/schema/websocket"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/websocket http://www.springframework.org/schema/websocket/spring-websocket-4.3.xsd">
+
+<!--    myhandler는 실시간 알람처리를 위해 쓰였다. -->
+	<bean id="myHandler" class="kr.or.ddit.utils.MyHandler" />
+<!-- 	에코핸들러는 채팅을 만들었을때 쓴 bean객체이다. -->
+	<bean id="echoHandler" class="kr.or.ddit.utils.EchoHandler" />
+	
+<!--이 Bean들은 화상회의때 구현한것들로  -->
+	<bean id="groupcallHandler" class="kr.or.ddit.websocket.groupcall.CallHandler"/>
+	
+<!-- 	Webrtc의 스턴 턴서버는 쿠렌토를 이용하였다. -->
+	<bean scope="prototype" id="kurentoClient" class="org.kurento.client.KurentoClient" factory-method="create"
+		c:websocketUrl="#{appInfo.kurentoPath}"/>
+<!-- UserRegistry에는 사람이  WebRtc에서 WebsocketSession이 들어왔을때와 나갔을떄를 체크하는 역할.		 -->
+<bean class="kr.or.ddit.websocket.groupcall.UserRegistry" />
+	<bean class="kr.or.ddit.websocket.groupcall.RoomManager"></bean>
+		
+	
+	
+<!-- 	핸들러객체를 매핑하는 부분으로 path는 웹소켓을 쓸대 불러오는 주소이다  -->
+	<websocket:handlers>
+		<websocket:mapping handler="groupcallHandler" path="/groupcall/**"/>
+		<websocket:mapping handler="echoHandler" path="/echo/**"/>
+		<websocket:mapping handler="myHandler"   path="/count" />
+<!-- 	핸드쉐이크는 WebsocketSession과 HttpSession을 Shaking 해주는 부분으로 WebsocketSession에서도 HttpSession의 값을 꺼내올수있다. -->
+		<websocket:handshake-interceptors>
+			<bean class="org.springframework.web.socket.server.support.HttpSessionHandshakeInterceptor" 
+				p:copyHttpSessionId="true"
+				p:copyAllAttributes="true"
+			/>
+		</websocket:handshake-interceptors>
+	</websocket:handlers>
+
+</beans>

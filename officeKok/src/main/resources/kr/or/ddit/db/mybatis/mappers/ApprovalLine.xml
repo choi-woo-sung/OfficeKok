@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.approval.appr.dao.IApprovalLineDAO">
+	
+	<insert id="insertApprovalLine" parameterType="ApprovalLineVO">
+		<selectKey keyProperty="apprlineno" order="BEFORE" resultType="int">
+			SELECT NVL(MAX(apprlineno), 0) + 1 AS apprlineno 
+			FROM apprline
+		</selectKey>
+		INSERT INTO apprline (apprlineno, empno, apprlinenm, saveyn) 
+			VALUES (#{apprlineno, jdbcType=NUMERIC}, #{empno, jdbcType=NUMERIC}, #{apprlinenm, jdbcType=VARCHAR}, #{saveyn, jdbcType=VARCHAR})
+	</insert>
+	
+	<resultMap type="ApprovalLineVO" id="approvalLine" autoMapping="true">
+		<id column="apprlineno" property="apprlineno"/>
+		<collection property="apprStepList" javaType="java.util.List" ofType="ApprovalStepVO" autoMapping="true"></collection>
+	</resultMap>
+	
+	<select id="selectApprovalLine" parameterType="int" resultMap="approvalLine">
+		SELECT A.*, B.*, apprtype, empnm, deptnm
+		FROM apprline A LEFT OUTER JOIN apprstep B ON A.apprlineno = B.apprlineno
+		                LEFT OUTER JOIN apprtype C ON B.apprtypeno = C.apprtypeno
+		                LEFT OUTER JOIN emp D ON stepempno = D.empno
+		                LEFT OUTER JOIN dept E ON D.deptno = E.deptno
+		WHERE A.apprlineno = #{apprlineno, jdbcType=NUMERIC}
+		ORDER BY apprstepprior
+	</select>
+	
+	<select id="selectApprovalLineList" parameterType="int" resultType="ApprovalLineVO">
+		SELECT * 
+		FROM apprline
+		WHERE empno = #{empno, jdbcType=NUMERIC}
+		AND saveyn = 'Y'
+		ORDER BY apprlineno DESC
+	</select>
+	
+	<update id="updateApprovalLine" parameterType="ApprovalLineVO">
+		UPDATE apprline SET apprlinenm = #{apprlinenm, jdbcType=VARCHAR};
+		WHERE apprlineno = #{apprlineno, jdbcType=NUMERIC}
+	</update>
+	
+	<delete id="deleteApprovalLine" parameterType="int">
+		DELETE FROM apprline
+		WHERE apprlineno = #{apprlineno, jdbcType=NUMERIC}
+	</delete>
+</mapper>

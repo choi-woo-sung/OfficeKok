@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.approval.appr.dao.IApprovalHistoryDAO">
+
+	<insert id="insertApprovalHistory" parameterType="ApprovalHistoryVO">
+		<selectKey keyProperty="apprhisno" order="BEFORE" resultType="int">
+			SELECT NVL(MAX(apprhisno), 0) + 1 apprhisno 			
+			FROM apprhis
+		</selectKey>
+		INSERT INTO apprhis (apprhisno, apprdocno, apprstepno, apprhisdate, apprhisstate, apprhisopinion) 
+		VALUES (#{apprhisno, jdbcType=NUMERIC}, #{apprdocno, jdbcType=VARCHAR}, #{apprstepno, jdbcType=NUMERIC}, 
+				SYSDATE, #{apprhisstate, jdbcType=NUMERIC}, #{apprhisopinion, jdbcType=VARCHAR})
+	</insert>
+	
+	
+	<select id="selectApprHistoryCnt" parameterType="string" resultType="int">
+		SELECT COUNT(*)
+		FROM apprhis
+		WHERE apprdocno = #{apprdocno, jdbcType=VARCHAR}
+	</select>
+	
+	<resultMap type="ApprovalHistoryVO" id="apprHistory" autoMapping="true">
+		<id property="apprhisno" column="apprhisno" />
+		<collection property="apprHisAtt" ofType="ApprovalHisAttVO" autoMapping="true"></collection>
+	</resultMap>
+	
+	<select id="selectApprHistoryList" parameterType="string" resultMap="apprHistory">
+		SELECT A.apprhisno AS apprhisno, apprdocno, apprstepno, TO_CHAR(apprhisdate, 'YYYY-MM-DD') AS apprhisdate, apprhisstate, apprhisopinion, B.*
+		FROM apprhis A LEFT OUTER JOIN apprhisatt B ON A.apprhisno = B.apprhisno
+		WHERE apprdocno = #{apprdocno, jdbcType=VARCHAR}
+	</select>
+	
+</mapper>

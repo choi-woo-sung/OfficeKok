@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.board.dao.IReplyDAO">
+	<select id="selectReplyCount" parameterType="PagingVO" resultType="int">
+		SELECT COUNT(*)
+		FROM reply
+		WHERE POSTNO = #{searchDetail.postno}
+	</select>
+	<select id="selectReplyList" parameterType="PagingVO" resultType="ReplyVO">
+		         		SELECT B.*
+		FROM (
+		    SELECT ROWNUM RNUM, A.*
+		    FROM (
+		        SELECT LEVEL,
+    replyno,
+    rereplyno,
+    empnm,
+    deptnm,
+    postno,
+    replycontent,
+    empno,
+    TO_CHAR(replydate, 'YYYY-MM-DD HH24:MI') replydate
+		        FROM REPLY , emp , dept
+		       WHERE postno =  #{searchDetail.postno}
+		        AND replywriter = emp.empno
+                and emp.deptno = dept.deptno
+        START WITH REREPLYNO IS NULL
+		CONNECT BY PRIOR REPLYNO = REREPLYNO
+		ORDER SIBLINGS BY REPLYNO DESC
+		    ) A
+		) B
+		WHERE RNUM BETWEEN #{startRow} AND #{endRow}
+		
+		
+	</select>
+	
+		<insert id="insertReply">
+		<selectKey keyProperty="replyno" resultType="int" order="BEFORE">
+			SELECT NVL(MAX(REPLYNO), 0)+1
+			FROM REPLY
+		</selectKey>
+		INSERT INTO REPLY (
+		    replyno,    replywriter,    postno,
+		    replycontent,    replydate   
+		   <if test="rereplyno!=null and rereplyno gt 0">
+			, rereplyno
+		</if>
+		    
+		) VALUES (
+			#{replyno},    #{replywriter},    #{postno},
+		    #{replycontent },    SYSDATE   
+		    <if test="rereplyno!=null and rereplyno gt 0">
+			, #{rereplyno,jdbcType=NUMERIC}
+		</if>
+		)
+	</insert>
+	<update id="updateReply" parameterType="ReplyVO">
+		UPDATE REPLY
+		SET
+		replycontent = #{replycontent}
+		WHERE replyno = #{replyno} 
+		
+	</update>
+	<delete id="deleteReply" parameterType="ReplyVO">
+		DELETE 
+		FROM REPLY
+		WHERE  1=1
+		  <if test="replyno!=null and replyno gt 0">
+			AND replyno = #{replyno} 
+		</if>
+		<if test="postno!=null and postno gt 0">
+			AND postno = #{postno} 
+		</if>
+	</delete>
+	
+	
+	
+	
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+

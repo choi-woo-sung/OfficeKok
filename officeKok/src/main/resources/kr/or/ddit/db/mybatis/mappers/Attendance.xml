@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.attendance.dao.IAttendanceDAO">
+
+	<select id="selectDateno" parameterType="AttendanceVO" resultType="int">
+		SELECT TASDDATENO
+		FROM TASDDATE
+		WHERE YEARLY = #{yearly} AND MONTHLY = #{monthly} AND DAILY = #{daily}
+	</select>
+	
+	<select id="selectOnedayAttendance" parameterType="AttendanceVO" resultType="AttendanceVO">
+	SELECT A.TASDDATENO ,B.TASTATUSNO ,B.EMPNO 
+		  ,NVL(B.GOWORKTIME, '00:00') AS GOWORKTIME
+	      ,NVL(B.AFTERWORKTIME, '00:00') AS AFTERWORKTIME
+	      ,NVL(B.WORKTIME, 0) AS WORKTIME
+	      ,NVL(B.HOLYWORKTIME, 0) AS HOLYWORKTIME
+	      ,NVL(B.PLUSWORKTIME, 0) AS PLUSWORKTIME
+	FROM TASDDATE A LEFT OUTER JOIN (SELECT * FROM TASTATUS
+	                                WHERE TASDDATENO = #{tasddateno} AND EMPNO = #{empno}) B 
+	ON A.TASDDATENO = B.TASDDATENO
+	WHERE A.TASDDATENO = #{tasddateno}
+	</select>
+	
+	<insert id="insertTime" parameterType="AttendanceVO">
+		<selectKey resultType="int" order="BEFORE" keyProperty="tastatusno">
+			SELECT NVL(MAX(TASTATUSNO), 0)+1
+			FROM TASTATUS
+		</selectKey>
+		INSERT INTO TASTATUS (
+		    TASTATUSNO,
+		    TASDDATENO,
+		    EMPNO,
+		    GOWORKTIME
+		) VALUES (
+		    #{tastatusno},
+		    #{tasddateno,jdbcType=NUMERIC},
+		    #{empno,jdbcType=NUMERIC},
+		    #{goworktime,jdbcType=VARCHAR}
+		)
+	</insert>
+	
+	<update id="updateTime" parameterType="AttendanceVO">
+		UPDATE TASTATUS
+	    SET
+	        AFTERWORKTIME = #{afterworktime},
+	        WORKTIME = #{worktime},
+	        PLUSWORKTIME = #{plusworktime}
+		WHERE
+	    	TASDDATENO = #{tasddateno}
+	</update>
+	
+	<select id="selectCominfo" resultType="CominfoVO">
+		SELECT *
+		FROM COMINFO
+	</select>
+	
+	<select id="selectAnnualRefresh" resultType="AttendanceVO" parameterType="int">
+		SELECT NVL(SUM(AMREFRESH),0)AS AMREFRESH, NVL(SUM(PMREFRESH),0) AS PMREFRESH, NVL(SUM(REFRESH.REFRESH),0) AS REFRESH    
+		FROM TASDDATE, REFRESH
+		WHERE TASDDATE.TASDDATENO = REFRESH.TASDDATENO AND YEARLY = TO_NUMBER(TO_CHAR(SYSDATE, 'YYYY')) AND EMPNO = #{empno}
+	</select>
+	
+	<select id="selectWorkTime" resultType="AttendanceVO" parameterType="AttendanceVO">
+		SELECT  NVL(SUM(TASTATUS.WORKTIME),0)AS WORKTIME, 
+       			NVL(SUM(TASTATUS.PLUSWORKTIME),0)AS PLUSWORKTIME, 
+        		NVL(SUM(TASTATUS.HOLYWORKTIME),0)AS HOLYWORKTIME,
+        		TO_NUMBER(TO_CHAR(SYSDATE, 'YYYY')) AS YEARLY 
+		FROM TASDDATE, TASTATUS
+		WHERE TASDDATE.TASDDATENO = TASTATUS.TASDDATENO AND 
+		TASDDATE.YEARLY = TO_NUMBER(TO_CHAR(SYSDATE, 'YYYY')) AND TASDDATE.MONTHLY = #{monthly} AND EMPNO = #{empno}
+	</select>
+	
+	<select id="selectRefreshDetail" resultType="AttendanceVO" parameterType="int">
+		SELECT TASDDATE.*, 
+	        REFRESH.EMPNO, 
+	        NVL(REFRESH.AMREFRESH, 0) AS AMREFRESH, 
+	        NVL(REFRESH.PMREFRESH, 0) AS PMREFRESH,  
+	        NVL(REFRESH.REFRESH, 0) AS REFRESH, 
+	        REFRESH.REFRESHREASON 
+		FROM REFRESH, TASDDATE
+		WHERE REFRESH.TASDDATENO = TASDDATE.TASDDATENO AND EMPNO = #{empno} AND YEARLY = TO_NUMBER(TO_CHAR(SYSDATE, 'YYYY'))
+		ORDER BY TASDDATE.TASDDATENO ASC
+	</select>
+	
+	<select id="selectWeekTime" resultType="int" parameterType="int">
+		SELECT NVL(SUM(WORKTIME), 0) AS WEEKTIME
+		FROM TASTATUS
+		WHERE TASDDATENO IN 
+			(SELECT TASDDATENO
+			FROM DUAL,
+			(select TASDDATENO, YEARLY || '-' || MONTHLY || '-' || DAILY AS DAY 
+			from TASDDATE)A
+			WHERE DAY = to_char( sysdate-( (select to_char(sysdate,'D') from dual) -2 ), 'yyyy-mm-dd')
+			      OR DAY  = to_char( sysdate-( (select to_char(sysdate,'D') from dual) -2 )+1, 'yyyy-mm-dd')
+			      OR DAY = to_char( sysdate-( (select to_char(sysdate,'D') from dual) -2 )+2, 'yyyy-mm-dd')
+			      OR DAY  = to_char( sysdate-( (select to_char(sysdate,'D') from dual) -2 )+3, 'yyyy-mm-dd')
+			      OR DAY = to_char( sysdate-( (select to_char(sysdate,'D') from dual) -2 )+4, 'yyyy-mm-dd')
+			      OR DAY = to_char( sysdate-( (select to_char(sysdate,'D') from dual) -2 )+5, 'yyyy-mm-dd'))
+			AND EMPNO = #{empno}
+	</select>
+</mapper>

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.chat.dao.IChatAttendDAO">
+
+
+	<select id="selectAttendList" parameterType="ChatAttendVO" resultType="ChatAttendVO">
+SELECT chatroom.chatrmno,chatrmbuilder,chatrmnm,chatrmdate,chatrmprofile,attenddate,alarmchk , chatrmcnt
+FROM chatroom, chatattend ,(
+select chatrmno , count(*) chatrmcnt
+from chatattend
+GROUP BY chatrmno
+)c
+WHERE    chatroom.chatrmno = chatattend.chatrmno
+and c.chatrmno= chatroom.chatrmno
+AND empno = #{empno}
+
+  		<trim prefix="AND (" prefixOverrides="OR" suffix=")">
+			<if test="searchVO neq null and @org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+				INSTR(chatrmnm, #{searchVO.searchWord}) > 0
+				</if>
+		</trim>	
+
+	</select>
+	
+	<update id="insertChatRm" parameterType="ChatAttendVO">
+	<selectKey resultType="int" order="BEFORE"
+		keyProperty="chatrmno">
+		SELECT NVL(MAX(chatrmno), 0)+1
+		FROM chatroom
+	</selectKey>
+	INSERT INTO chatroom (
+	chatrmno,
+	chatrmbuilder,
+	chatrmnm,
+	chatrmdate,
+	chatrmprofile
+	) VALUES (
+	#{chatrmno},
+	#{chatrmbuilder},
+	#{chatrmnm},
+	sysdate,
+	null
+	)
+	</update>
+	
+	
+	
+	
+<update id="insertChatAttendList" parameterType="ChatAttendVO">
+	<selectKey resultType="int" order="BEFORE" 
+		keyProperty="attendno" >
+		SELECT NVL(MAX(attendno), 0)+1
+		FROM chatattend
+	</selectKey>
+       INSERT INTO chatattend (
+    attendno,
+    empno,
+    chatrmno,
+    attenddate,
+    alarmchk
+) VALUES (
+    #{attendno},
+    #{empno},
+    #{chatrmno},
+    sysdate,
+    'Y'
+)
+	</update>
+
+
+<select id="selectattendno" resultType="int">
+		SELECT NVL(MAX(chatrmno), 0)
+		FROM chatroom
+</select>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</mapper>

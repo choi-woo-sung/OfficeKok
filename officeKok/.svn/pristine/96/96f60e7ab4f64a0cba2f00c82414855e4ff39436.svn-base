@@ -1,0 +1,30 @@
+package kr.or.ddit.preparer;
+
+import java.util.Arrays;
+import java.util.Map;
+
+import org.apache.tiles.AttributeContext;
+import org.apache.tiles.preparer.ViewPreparer;
+import org.apache.tiles.request.Request;
+
+import kr.or.ddit.vo.MenuVO;
+
+public class MemberViewPreparer implements ViewPreparer {
+	
+	@Override
+	public void execute(Request req, AttributeContext ctx) {
+//		<a herf="주소">메뉴</a>
+//		회원 목록, 신규 등록
+		MenuVO menu1 = MenuVO.getBuilder()
+				.menuText("회원목록")
+				.menuURI("/member/memberList.do")
+				.build();
+		MenuVO menu2 = MenuVO.getBuilder()
+				.menuText("신규등록")
+				.menuURI("/registMember.do")
+				.build();
+		Map<String, Object> requestScope = req.getContext(Request.REQUEST_SCOPE);
+		requestScope.put("menuList", Arrays.asList(menu1, menu2));
+	}
+
+}

@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.board.dao.IBoardDAO">
+	<sql id="searchFrag">
+		<trim prefix="AND (" prefixOverrides="OR" suffix=")">
+			<if test="searchVO neq null and @org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+				<if test="'subject' eq searchVO.searchType">
+					INSTR(POSTSUBJECT, #{searchVO.searchWord}) > 0
+				</if>
+				<if test="'writer' eq searchVO.searchType">
+					INSTR(POSTWRITER, #{searchVO.searchWord}) > 0
+				</if>
+				<if test="'content' eq searchVO.searchType">
+					INSTR(POSTCONTENT, #{searchVO.searchWord}) > 0
+				</if>
+			</if>
+		</trim>
+	</sql>
+
+	<select id="selectPostCount" resultType="int"
+		parameterType="kr.or.ddit.vo.PagingVO">
+		SELECT COUNT(*)
+		FROM POST
+		WHERE BOARDNO = #{boardno,jdbcType=NUMERIC}
+		<include refid="searchFrag" />
+	</select>
+
+	<select id="selectPostList"
+		parameterType="kr.or.ddit.vo.PagingVO"
+		resultType="kr.or.ddit.vo.PostVO">
+		SELECT B.*
+		FROM (
+		SELECT ROWNUM RNUM, A.*
+		FROM (
+		SELECT LEVEL, POSTNO, BOARDNO, EMPNM,POSTSUBJECT,
+		TO_CHAR(POSTDATE, 'YYYY-MM-DD HH24:MI') POSTDATE, POSTHIT
+		FROM POST, EMP
+		WHERE POSTHIDE = 'N'
+		AND POSTWRITER = EMPNO
+		AND BOARDNO=#{boardno}
+		<include refid="searchFrag" />
+		START WITH REPOSTNO IS NULL
+		CONNECT BY PRIOR POSTNO = REPOSTNO
+		ORDER
+		SIBLINGS BY POSTNO DESC
+		) A
+		) B
+		WHERE RNUM BETWEEN #{startRow} AND
+		#{endRow}
+
+	</select>
+	<resultMap type="PostVO" id="PostMap" autoMapping="true">
+	<id property="postno" column="postno"/>
+	<collection property="attatchList" ofType="PostAttVO" autoMapping="true"/>
+	<collection property="replyList" ofType="ReplyVO" autoMapping="true"/>
+	</resultMap>
+	<select id="selectPost" parameterType="int"
+		resultMap="PostMap">
+        select   a.postno, repostno, a.boardno, empnm, postsubject, f.deptnm,d.empno, empmail, e.boardno,
+		postcontent ,TO_CHAR(POSTDATE, 'YYYY-MM-DD HH24:MI') postdate , posthit,
+		posthide ,postattno , postattfilename, postattsavename, postattmime, postattsize,b.post_no,
+        replyno
+	from post a LEFT OUTER JOIN postatt b on (a.postno = b.post_no)
+         LEFT OUTER JOIN reply C ON (a.postno = c.postno)
+         LEFT OUTER JOIN emp d on (a.postwriter = d.empno)
+         INNER JOIN board e ON e.boardcate = d.deptno
+         INNER JOIN dept f ON e.boardcate = f.deptno
+         where a.postno = #{postno}
+	</select>
+
+	<update id="incrementHit" parameterType="int">
+		UPDATE POST
+		SET
+		POSTHIT =
+		POSTHIT + 1
+		WHERE POSTNO = #{postno}
+	</update>
+	<insert id="insertPost" parameterType="PostVO">
+		<selectKey resultType="int" order="BEFORE"
+			keyProperty="postno">
+			SELECT NVL(MAX(POSTNO), 0)+1
+			FROM POST
+		</selectKey>
+		INSERT INTO post (
+		postno,
+		boardno,
+		postwriter,
+		postsubject,
+		postcontent,
+		postdate,
+		posthit,
+		posthide
+
+		<if test="repostno!=null and repostno gt 0">
+			, repostno
+		</if>
+		) VALUES (
+		#{postno},
+		#{boardno, jdbcType=NUMERIC},
+		#{postwriter},
+		#{postsubject},
+		#{postcontent},
+		sysdate,
+		1,
+		'N'
+		<if test="repostno!=null and repostno gt 0">
+			, #{repostno,jdbcType=NUMERIC}
+		</if>
+		)
+	</insert>
+	
+	<update id="updatePost" parameterType="PostVO">
+		UPDATE Post
+	    SET
+		   
+        postsubject		=	#{postsubject},
+		postcontent	=	#{postcontent}
+		WHERE    postno	=	#{postno}
+	</update>
+	
+	
+	
+		<delete id="deletePost" parameterType="int">
+		DELETE 
+		FROM POST
+		WHERE POSTNO = #{postno}
+	</delete>
+	
+	<select id="selectPostdept" resultType="PostVO"
+		parameterType="int">
+	select boardno , deptnm
+	from board , dept 
+	where boardcate = deptno
+	and deptno = #{deptno}
+	</select>
+	
+	<select id="mainPost" parameterType="int" resultType="PostVO">
+	   		SELECT B.*
+		FROM (
+		SELECT ROWNUM RNUM, A.*
+		FROM (
+		SELECT LEVEL, POSTNO, BOARDNO, EMPNM,POSTSUBJECT,
+		TO_CHAR(POSTDATE, 'YYYY-MM-DD HH24:MI') POSTDATE, POSTHIT
+		FROM POST, EMP
+		WHERE POSTHIDE = 'N'
+		AND POSTWRITER = EMPNO
+		AND BOARDNO= #{boardno}
+		START WITH REPOSTNO IS NULL
+		CONNECT BY PRIOR POSTNO = REPOSTNO
+		ORDER
+		SIBLINGS BY POSTNO DESC
+		) A
+		) B
+	where rnum  Between 1 and 10
+	</select>
+	
+	
+</mapper>

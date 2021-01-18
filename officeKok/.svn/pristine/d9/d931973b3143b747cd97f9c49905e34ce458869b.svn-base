@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.board.dao.IPostAttDAO">
+	
+	<insert id="insertAttatchs" parameterType="PostVO">
+		<selectKey resultType="int" order="BEFORE" keyProperty="firstAttNo">
+SELECT NVL(MAX(postattno), 0)+1
+			FROM POSTATT
+		</selectKey>
+		INSERT ALL
+		<foreach collection="attatchList" item="attatch" index="idx">
+			INTO POSTATT (    
+				    POSTATTNO,
+    				POST_NO,
+    				POSTATTFILENAME,
+    				POSTATTSAVENAME,
+    				POSTATTMIME,
+   					 POSTATTSIZE
+			) VALUES (
+				#{firstAttNo}+#{idx},    #{post_no},    #{attatch.postattfilename},
+			    #{attatch.postattsavename},    #{attatch.postattmime},    #{attatch.postattsize}
+			)
+		</foreach>
+		SELECT * FROM DUAL	
+	</insert>
+	<select id="selectAttatch" parameterType="int" resultType="PostAttVO">
+		SELECT 
+	POSTATTNO,
+    POST_NO,
+    POSTATTFILENAME,
+    POSTATTSAVENAME,
+    POSTATTMIME,
+    POSTATTSIZE
+    
+		FROM POSTATT
+		WHERE POSTATTNO = #{postattno}
+	</select>
+	<delete id="deleteAttatchs" parameterType="PostVO">
+		DELETE
+		FROM POSTATT
+		<where>
+			<choose>
+				<when test="deleteAttatchNos !=null and deleteAttatchNos.length gt 0">
+					postattno IN
+					<foreach collection="deleteAttatchNos" item="attno" separator="," open="(" close=")">
+						#{postattno}
+					</foreach>				
+				</when>
+				<otherwise>
+					POST_NO = #{postno}	
+				</otherwise>
+			</choose>
+		</where>
+	</delete>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

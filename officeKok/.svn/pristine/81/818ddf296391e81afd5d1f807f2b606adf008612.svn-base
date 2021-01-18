@@ -1,0 +1,40 @@
+package kr.or.ddit.note.dao;
+
+import java.util.List;
+
+import org.springframework.stereotype.Repository;
+
+import kr.or.ddit.vo.NoteVO;
+import kr.or.ddit.vo.PagingVO;
+
+@Repository
+public interface INoteSendDAO {
+
+	/**
+	 * 검색 조건에 맞는 보낸 쪽지 수 조회
+	 * @param pagingVO
+	 * @return
+	 */
+	public int selectSendNoteCount(PagingVO<NoteVO> pagingVO);
+
+	/**
+	 * 보낸 쪽지 목록 조회
+	 * @param pagingVO
+	 * @return
+	 */
+	public List<NoteVO> selectSendNoteList(PagingVO<NoteVO> pagingVO);
+	
+	/**
+	 * 보낸 쪽지 상세 조회
+	 * @param noteno
+	 * @return
+	 */
+	public NoteVO selectSendNote(NoteVO noteVO);
+	
+	/**
+	 * 받은 쪽지 휴지통으로 이동
+	 * @param noteVO
+	 * @return
+	 */
+	public int updatetrashNote(NoteVO noteVO);
+}

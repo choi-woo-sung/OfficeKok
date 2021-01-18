@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.note.dao.INoteRegistDAO">
+	<insert id="insertNote" parameterType="NoteVO">
+		<selectKey resultType="int" keyProperty="noteno" order="BEFORE">
+			SELECT NVL(MAX(noteno), 0)+1 as noteno
+			FROM note
+		</selectKey>
+		INSERT INTO note (
+		    noteno, notesend, notereceive, notecate, notesubject,
+		    notecontent, notedate, notesave, notedel, noteurgent,
+		    noteread
+		) VALUES (
+			#{noteno, jdbcType=NUMERIC}, #{notesend, jdbcType=NUMERIC}, #{notereceive, jdbcType=NUMERIC}, 
+			#{notecate, jdbcType=NUMERIC}, #{notesubject, jdbcType=VARCHAR}, #{notecontent, jdbcType=VARCHAR}, 
+			SYSDATE, 'Y', 'N', #{noteurgent, jdbcType=VARCHAR}, 'N'
+		)
+	</insert>
+	
+	<update id="updateTemp" parameterType="NoteVO">
+		UPDATE note 
+		SET
+			notesave = #{notesave, jdbcType=VARCHAR},
+			notedate = SYSDATE
+		WHERE noteno = #{noteno, jdbcType=NUMERIC}
+	</update>
+</mapper>

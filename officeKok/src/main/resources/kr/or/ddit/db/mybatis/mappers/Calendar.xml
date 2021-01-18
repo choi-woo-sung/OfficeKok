@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.calendar.dao.ICalendarDAO">
+
+	<resultMap type="EmpVO" id="calAllVO" autoMapping="true">
+		<collection property="scheList" ofType="CalendarVO" autoMapping="true"></collection>
+		<collection property="scheDetailList" ofType="CalendarDetailVO" autoMapping="true"></collection>
+	</resultMap>
+	
+	<select id="selectCalList" parameterType="int" resultType="CalendarVO">
+		SELECT schedetailnm, schedetailno, schedetailtype, TO_CHAR(startdate, 'YYYY-MM-DD HH24:mi') startdate,
+		TO_CHAR(enddate, 'YYYY-MM-DD HH24:mi') enddate
+		FROM sche sc, schedetail sd
+		WHERE sc.scheduleno = sd.scheno
+		  AND empno = #{empno}
+	</select>
+	
+	<select id="selectCal" parameterType="int" resultType="calendarDetailVO">
+		SELECT empnm, ranknm, schedetailno, scheno, schedetailnm, schedetailtype, 
+			   TO_CHAR(startdate, 'YYYY-MM-DD HH24:mi') startdate, TO_CHAR(enddate, 'YYYY-MM-DD HH24:mi') enddate,
+			   schedetailplace, schedetailcontent, openchk, modifydate
+		FROM schedetail sd, sche sc, emp, rank
+		WHERE sc.scheduleno = sd.scheno
+		  AND emp.empno = sc.empno
+          AND emp.rankno = rank.rankno
+		  AND schedetailno = #{schedetailno}
+	</select>
+	
+	<insert id="insertCal" parameterType="CalendarVO">
+		<selectKey resultType="int" keyProperty="scheduleno" order="BEFORE">
+			SELECT NVL(MAX(scheduleno), 0)+1 as scheduleno
+			FROM sche
+		</selectKey>
+		INSERT INTO sche (
+		    scheduleno, empno, scheduledate
+		) VALUES (
+		    #{scheduleno,jdbcType=NUMERIC}, #{empno,jdbcType=NUMERIC}, 
+		    TO_DATE(#{scheduledate,jdbcType=DATE}, 'yyyy/mm/dd hh24:mi')
+		)
+	</insert>
+	
+	<insert id="insertCalDetail" parameterType="CalendarDetailVO">
+		<selectKey resultType="int" keyProperty="schedetailno" order="BEFORE">
+			SELECT NVL(MAX(schedetailno), 0)+1 as schedetailno
+			FROM schedetail
+		</selectKey>
+		INSERT INTO schedetail (
+			schedetailno, scheno, schedetailnm, schedetailtype, startdate, 
+			enddate, schedetailplace, schedetailcontent, openchk, modifydate
+		) VALUES (
+			#{schedetailno, jdbcType=NUMERIC}, #{scheno, jdbcType=NUMERIC}, #{schedetailnm, jdbcType=VARCHAR}, 
+			#{schedetailtype, jdbcType=VARCHAR}, TO_DATE(#{startdate,jdbcType=DATE}, 'YYYY/MM/DD HH24:mi'), 
+			TO_DATE(#{enddate,jdbcType=DATE}, 'YYYY/MM/DD HH24:mi'), 
+			#{schedetailplace, jdbcType=VARCHAR}, #{schedetailcontent, jdbcType=VARCHAR}, 
+			#{openchk, jdbcType=VARCHAR}, #{modifydate, jdbcType=DATE}
+		)
+	</insert>
+	
+	<update id="updateCal" parameterType="CalendarVO">
+		UPDATE sche 
+		SET
+			scheduledate = #{scheduledate,jdbcType=DATE}
+		WHERE empno = #{empno}
+		  AND scheduleno = #{scheduleno}
+	</update>
+	
+	<update id="updateCalDetail" parameterType="CalendarDetailVO">
+		UPDATE schedetail
+	    SET
+		    schedetailnm = #{schedetailnm,jdbcType=VARCHAR},
+		    schedetailtype = #{schedetailtype,jdbcType=VARCHAR},
+		    startdate = #{startdate,jdbcType=DATE},
+		    enddate = #{enddate,jdbcType=DATE},
+		    schedetailplace = #{schedetailplace,jdbcType=VARCHAR},
+		    schedetailcontent = #{schedetailcontent,jdbcType=VARCHAR},
+		    openchk = #{openchk,jdbcType=VARCHAR},
+		    modifydate = #{modifydate,jdbcType=DATE}
+		WHERE schedetailno = #{schedetailno}
+		  AND scheno = #{scheno}
+	</update>
+	
+	<select id="selectCalSubjectList" parameterType="int" resultType="CalendarVO">
+		SELECT *
+		FROM sche LEFT OUTER JOIN schedetail on sche.scheduleno = schedetail.scheno 
+		WHERE to_char(SCHEDULEDATE, 'YYYY-MM-DD') = TO_CHAR(SYSDATE, 'YYYY-MM-DD')
+		  AND empno = #{empno}
+	</select>
+</mapper>
